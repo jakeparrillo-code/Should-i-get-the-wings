@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Should I get the Wings?</title>
+  <style>
+    :root {
+      --bg-color: #f8f9fa;
+      --card-bg: #ffffff;
+      --text-color: #212529;
+      --accent-color: #e63946;
+      --yes-color: #2a9d8f;
+      --no-color: #e63946;
+      --maybe-color: #e76f51;
+      --link-color: #1d3557;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      background: var(--card-bg);
+      padding: 2.5rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+      color: #1d3557;
+    }
+
+    .search-box {
+      position: relative;
+      margin-bottom: 0.75rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.2s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent-color);
+    }
+
+    .suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 10;
+      text-align: left;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      display: none;
+    }
+
+    .suggestion-item {
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+
+    .suggestion-item:hover {
+      background-color: #f1f5f9;
+    }
+
+    .footer-credit {
+      font-size: 0.85rem;
+      color: #6c757d;
+      margin-bottom: 1.5rem;
+    }
+
+    .footer-credit a {
+      color: var(--link-color);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .footer-credit a:hover {
+      color: var(--accent-color);
+    }
+
+    .result {
+      font-size: 3rem;
+      font-weight: 800;
+      margin-top: 1rem;
+      min-height: 4rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 12px;
+      padding: 1rem;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+
+    .result.yes {
+      color: var(--yes-color);
+      background-color: #e8f8f5;
+    }
+
+    .result.no {
+      color: #ffffff;
+      background-color: var(--no-color);
+    }
+
+    .result.custom {
+      font-size: 1.25rem;
+      font-weight: 600;
+      line-height: 1.5;
+      color: var(--no-color);
+      background-color: #fde8e8;
+    }
+
+    .result.custom a {
+      color: #b71c1c;
+      text-decoration: underline;
+      font-weight: 700;
+    }
+
+    .result.phrase {
+      font-size: 1.25rem;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--maybe-color);
+      background-color: #fff3e6;
+    }
+
+    .result.not-found {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #6c757d;
+      background-color: #f1f3f5;
+    }
+
+    .map-container {
+      margin-top: 1.5rem;
+      display: none;
+      text-align: left;
+    }
+
+    .map-container h3 {
+      font-size: 1.1rem;
+      color: #1d3557;
+      margin: 0 0 0.5rem 0;
+    }
+
+    .map-frame {
+      width: 100%;
+      height: 250px;
+      border: 0;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Should I get the Wings? 🍗</h1>
+    
+    <div class="search-box">
+      <input 
+        type="text" 
+        id="restaurantInput" 
+        placeholder="Loading restaurants..." 
+        autocomplete="off"
+        disabled
+      >
+      <div id="suggestions" class="suggestions"></div>
+    </div>
+
+    <div class="footer-credit">
+      A Web project by <a href="https://blog.jakeparrillo.com/" target="_blank" rel="noopener noreferrer">Jake Parrillo</a>
+    </div>
+
+    <div id="result" class="result"></div>
+
+    <div id="mapContainer" class="map-container">
+      <h3 id="mapTitle"></h3>
+      <iframe id="mapFrame" class="map-frame" loading="lazy" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <script>
+    const SHEET_ID = "1-qJajgILwS_7rnPIf_WUF20RsJAu41_rIjffKBUYIh8";
+    const SHEET_NAME = "Locations";
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+    let restaurants = [];
+
+    const input = document.getElementById("restaurantInput");
+    const resultDiv = document.getElementById("result");
+    const suggestionsDiv = document.getElementById("suggestions");
+    const mapContainer = document.getElementById("mapContainer");
+    const mapTitle = document.getElementById("mapTitle");
+    const mapFrame = document.getElementById("mapFrame");
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    async function loadRestaurants() {
+      try {
+        const response = await fetch(SHEET_URL);
+        const text = await response.text();
+        
+        // Strip Google Visualization wrapper: google.visualization.Query.setResponse(...)
+        const jsonString = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
+        const data = JSON.parse(jsonString);
+        const rows = data.table.rows || [];
+
+        restaurants = rows
+          .map(row => {
+            const cells = row.c || [];
+            const name = cells[0]?.v ? String(cells[0].v).trim() : "";
+            const answer = cells[1]?.v ? String(cells[1].v).trim() : "";
+            const street = cells[2]?.v ? String(cells[2].v).trim() : "";
+            const city = cells[3]?.v ? String(cells[3].v).trim() : "";
+            const state = cells[4]?.v ? String(cells[4].v).trim() : "";
+            const zip = cells[5]?.v ? String(cells[5].v).trim() : "";
+            const country = cells[6]?.v ? String(cells[6].v).trim() : "";
+            const url = cells[7]?.v ? String(cells[7].v).trim() : "";
+
+            const addressParts = [street, city, [state, zip].filter(Boolean).join(" "), country].filter(Boolean);
+            return {
+              name,
+              answer,
+              address: addressParts.join(", "),
+              url
+            };
+          })
+          // Skip blank rows or header rows if added later
+          .filter(r => r.name && r.answer && r.name.toLowerCase() !== "restaurant");
+
+        input.disabled = false;
+        input.placeholder = "Enter restaurant name...";
+      } catch (error) {
+        console.error("Failed to load Google Sheet:", error);
+        input.placeholder = "Error loading restaurant list";
+      }
+    }
+
+    function searchRestaurant(query) {
+      if (!query.trim()) {
+        resultDiv.innerHTML = "";
+        resultDiv.className = "result";
+        mapContainer.style.display = "none";
+        return;
+      }
+
+      const match = restaurants.find(r => 
+        r.name.toLowerCase() === query.trim().toLowerCase()
+      );
+
+      if (match) {
+        const upperAnswer = match.answer.toUpperCase();
+
+        if (upperAnswer === "YES") {
+          resultDiv.textContent = "YES";
+          resultDiv.className = "result yes";
+        } else if (upperAnswer === "NO") {
+          resultDiv.textContent = "NO";
+          resultDiv.className = "result no";
+        } else if (match.url) {
+          // Link domain mentions (e.g., Dorianells.com) or append a link if URL is in Column H
+          const safeText = escapeHtml(match.answer);
+          const safeUrl = escapeHtml(match.url);
+          const linkedText = safeText.replace(
+            /(Dorianells\.com|https?:\/\/[^\s]+)/i,
+            `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">$1</a>`
+          );
+          resultDiv.innerHTML = linkedText;
+          resultDiv.className = upperAnswer.startsWith("NO") ? "result custom" : "result phrase";
+        } else {
+          resultDiv.textContent = match.answer;
+          resultDiv.className = "result phrase";
+        }
+
+        if (match.address) {
+          mapTitle.textContent = match.name;
+          const encodedLocation = encodeURIComponent(`${match.name}, ${match.address}`);
+          mapFrame.src = `https://maps.google.com/maps?q=${encodedLocation}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+          mapContainer.style.display = "block";
+        } else {
+          mapContainer.style.display = "none";
+        }
+      } else {
+        resultDiv.textContent = "Restaurant not found in list";
+        resultDiv.className = "result not-found";
+        mapContainer.style.display = "none";
+      }
+    }
+
+    function showSuggestions(value) {
+      suggestionsDiv.innerHTML = "";
+      if (!value.trim()) {
+        suggestionsDiv.style.display = "none";
+        return;
+      }
+
+      const matches = restaurants.filter(r => 
+        r.name.toLowerCase().includes(value.trim().toLowerCase())
+      );
+
+      if (matches.length > 0) {
+        matches.forEach(item => {
+          const div = document.createElement("div");
+          div.className = "suggestion-item";
+          div.textContent = item.name;
+          div.onclick = () => {
+            input.value = item.name;
+            suggestionsDiv.style.display = "none";
+            searchRestaurant(item.name);
+          };
+          suggestionsDiv.appendChild(div);
+        });
+        suggestionsDiv.style.display = "block";
+      } else {
+        suggestionsDiv.style.display = "none";
+      }
+    }
+
+    input.addEventListener("input", (e) => {
+      showSuggestions(e.target.value);
+      searchRestaurant(e.target.value);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search-box")) {
+        suggestionsDiv.style.display = "none";
+      }
+    });
+
+    loadRestaurants();
+  </script>
+
+</body>
+</html>
